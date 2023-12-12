@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="shortcut icon" href="/static/imgs/folder.png" type="image/png">
+    <title>filemanager</title>
+    <!-- <script src="https://cdn.staticfile.org/jquery/3.6.0/jquery.min.js"></script> -->
+    <!-- <script src="http://cdn.staticfile.org/vue/3.2.37/vue.global.prod.min.js"></script> -->
+    <!-- <script src="http://cdn.staticfile.org/vue/3.2.37/vue.global.min.js"></script> -->
+    <!-- <script src="https://cdn.staticfile.org/axios/0.21.1/axios.min.js"></script> -->
+
+    <script src="/static/js/vue.global.prod.min.js"></script>
+    <script src="/static/js/axios.min.js"></script>
+    <script src="/static/element-plus@2.2.12/dist/index.full.min.js"></script>
+    <link rel="stylesheet" href="/static/element-plus@2.2.12/dist/index.css" />
+    <!-- <script src="/static/icons-vue@2.0.6/dist/index.js"></script> -->
+
+
+    <!-- <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
+    <script src="https://unpkg.com/vue@3"></script>
+    <script src="https://unpkg.com/element-plus"></script>
+    <script src="https://unpkg.com/@element-plus/icons-vue"></script> -->
+
+    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus/dist/index.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/element-plus"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@element-plus/icons-vue"></script> -->
+
+    <style type="text/css">
+        html,
+        body,
+        iframe,
+        #showvue,
+        .common-layout,
+        .el-container,
+        .el-tabs,
+        /* .el-tabs__content, */
+        .el-tab-pane {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            border: 0;
+        }
+
+        .el-tabs__header {
+            margin: 0;
+        }
+
+        .el-tabs__content {
+            height: calc(100% - 40px);
+        }
+
+        .el-main {
+            padding: 1px 0px 1px 20px;
+            /* height: calc(100% - 5px); */
+        }
+    </style>
+</head>
+
+<body>
+    <div id="showvue">
+
+        <el-container>
+
+            <el-aside width="250px">
+                <el-main>
+                    <p>
+                        <el-button size="small" type="primary" plain @click="getfilelist('refresh')">
+                            <el-icon>
+                                <svg viewBox="0 0 1024 1024">
+                                    <path fill="currentColor"
+                                        d="M771.776 794.88A384 384 0 0 1 128 512h64a320 320 0 0 0 555.712 216.448H654.72a32 32 0 1 1 0-64h149.056a32 32 0 0 1 32 32v148.928a32 32 0 1 1-64 0v-50.56zM276.288 295.616h92.992a32 32 0 0 1 0 64H220.16a32 32 0 0 1-32-32V178.56a32 32 0 0 1 64 0v50.56A384 384 0 0 1 896.128 512h-64a320 320 0 0 0-555.776-216.384z">
+                                    </path>
+                                </svg>
+                            </el-icon>
+                            刷新目录
+                        </el-button>
+                        <el-icon v-if="loadingif" class="is-loading" style="float: right;right: 20px;font-size: 30px;">
+                            <svg viewBox="0 0 1024 1024" class="is-loading">
+                                <path fill="currentColor"
+                                    d="M512 64a32 32 0 0 1 32 32v192a32 32 0 0 1-64 0V96a32 32 0 0 1 32-32zm0 640a32 32 0 0 1 32 32v192a32 32 0 1 1-64 0V736a32 32 0 0 1 32-32zm448-192a32 32 0 0 1-32 32H736a32 32 0 1 1 0-64h192a32 32 0 0 1 32 32zm-640 0a32 32 0 0 1-32 32H96a32 32 0 0 1 0-64h192a32 32 0 0 1 32 32zM195.2 195.2a32 32 0 0 1 45.248 0L376.32 331.008a32 32 0 0 1-45.248 45.248L195.2 240.448a32 32 0 0 1 0-45.248zm452.544 452.544a32 32 0 0 1 45.248 0L828.8 783.552a32 32 0 0 1-45.248 45.248L647.744 692.992a32 32 0 0 1 0-45.248zM828.8 195.264a32 32 0 0 1 0 45.184L692.992 376.32a32 32 0 0 1-45.248-45.248l135.808-135.808a32 32 0 0 1 45.248 0zm-452.544 452.48a32 32 0 0 1 0 45.248L240.448 828.8a32 32 0 0 1-45.248-45.248l135.808-135.808a32 32 0 0 1 45.248 0z">
+                                </path>
+                            </svg>
+                        </el-icon>
+                    </p>
+
+                    <el-input v-model="filterText" size="small" placeholder="Filter keyword"></el-input>
+
+                    <el-tree v-if="showtree" ref="treeRef" :data="filelistdata" :props="defaultProps" :indent=8
+                        @node-click="handleNodeClick" :filter-node-method="filterNode" :expand-on-click-node=false
+                        :key="treekey">
+                    </el-tree>
+
+                    <span v-else>
+                        加载中。。。
+                    </span>
+
+                </el-main>
+            </el-aside>
+
+            <el-main>
+
+                <!-- <div style="margin-bottom: 20px">
+                        <el-button size="small" @click="addTab(editableTabsValue)">
+                            add tab
+                        </el-button>
+                    </div> -->
+                <el-tabs v-model="editableTabsValue" type="card" closable @tab-remove="removeTab">
+                    <el-tab-pane v-for="item in editableTabs" :key="item.name" :label="item.title" :name="item.name">
+                        <h2 v-if="item.content">{{ item.content }}</h2>
+                        <iframe v-else :src="item.path">
+                        </iframe>
+                    </el-tab-pane>
+                </el-tabs>
+
+            </el-main>
+
+        </el-container>
+
+    </div>
+
+</body>
+
+<script type="text/javascript">
+    var host = location.origin; 
+    var filelist = [];
+    var vueapp = {
+        data() {
+            return {
+                treekey: 0,
+                showtree: false,
+                loadingif: false,
+            };
+        },
+        methods: {
+            getfilelist(refresh) {
+                this.loadingif = true;
+                axios.post(host + '/filedata/filelist',
+                    { "user": "admin", "refresh": refresh ? refresh : "" }
+                ).then(response => {
+                    this.loadingif = false;
+                    if (response.data.code === "666") {
+                        filelist = JSON.parse(response.data.data);
+                        this.setfilelist();
+                    } else {
+                        // console.log("filelist post fail");
+                    }
+                }).catch(error => {
+                    this.loadingif = false;
+                    console.log("filelist post error", error);
+                    this.showtree = false;
+                })
+            },
+            setfilelist() {
+                this.showtree = false
+                var childrenfunc = (childdata, fapath) => {
+                    var childres = [];
+                    for (var key in childdata) {
+                        var obj = { label: key, path: fapath + "/" + key };
+                        var child = childrenfunc(childdata[key], obj.path);
+                        if (child.length > 0) {
+                            obj["children"] = child;
+                        }
+                        childres.push(obj)
+                    }
+                    return childres
+                }
+                this.filelistdata = childrenfunc(filelist, "")
+                // 刷新目录树
+                this.showtree = true
+            },
+        },
+        setup() {
+            const instance = Vue.getCurrentInstance();
+
+            const defaultProps = {
+                children: 'children',
+                label: 'label',
+            }
+            const treeRef = Vue.ref(null)
+            const filterNode = (value, data) => {
+                if (!value) return true
+                return data.label.includes(value)
+            }
+            const filterText = Vue.ref('')
+            Vue.watch(filterText, (val) => {
+                var treeInstance = Vue.toRefs(instance.refs.treeRef);
+                treeInstance.filter.value(val)
+            })
+            var handleNodeClick = (data) => {
+                var filepath = data.path;
+                path = host + "/file/file_folder.html?folder=" + data.path
+                addTab(editableTabsValue, data.label, path);
+            }
+
+            let tabIndex = 1
+            const editableTabsValue = Vue.ref('2')
+            const editableTabs = Vue.ref([
+                {
+                    title: '欢迎使用',
+                    name: '1',
+                    content: '点击左侧目录查看文件夹',
+                },
+            ])
+            const addTab = (targetName, label, path) => {
+                const newTabName = `${++tabIndex}`
+                if (label.length > 10) {
+                    label = label.slice(0, 10) + "..."
+                }
+                editableTabs.value.push({
+                    title: label,
+                    name: newTabName,
+                    path: path,
+                })
+                editableTabsValue.value = newTabName
+                document.getElementById("pane-1").style.display = "none"
+            }
+            const removeTab = (targetName) => {
+                const tabs = editableTabs.value
+                let activeName = editableTabsValue.value
+                if (activeName === targetName) {
+                    tabs.forEach((tab, index) => {
+                        if (tab.name === targetName) {
+                            const nextTab = tabs[index + 1] || tabs[index - 1]
+                            if (nextTab) {
+                                activeName = nextTab.name
+                            }
+                        }
+                    })
+                }
+                editableTabsValue.value = activeName
+                editableTabs.value = tabs.filter((tab) => tab.name !== targetName)
+            }
+
+            return {
+                filterNode,
+                filterText,
+                defaultProps,
+                handleNodeClick,
+
+                editableTabsValue,
+                editableTabs,
+                addTab,
+                removeTab,
+            }
+        }
+    };
+    const vueappvm = Vue.createApp(vueapp).use(ElementPlus).mount('#showvue');
+    vueappvm.getfilelist();
+    document.getElementById("pane-1").style.display = "inline-block" 
+</script>
+
+</html>

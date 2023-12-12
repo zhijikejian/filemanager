@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="shortcut icon" href="/static/imgs/folder.png" type="image/png">
+    <title>filemanager</title>
+    <!-- <script src="https://cdn.staticfile.org/jquery/3.6.0/jquery.min.js"></script> -->
+    <!-- <script src="http://cdn.staticfile.org/vue/3.2.37/vue.global.prod.min.js"></script> -->
+    <!-- <script src="http://cdn.staticfile.org/vue/3.2.37/vue.global.min.js"></script> -->
+    <!-- <script src="https://cdn.staticfile.org/axios/0.21.1/axios.min.js"></script> -->
+
+
+    <script src="/static/js/vue.global.prod.min.js"></script>
+    <script src="/static/js/axios.min.js"></script>
+    <script src="/static/element-plus@2.2.12/dist/index.full.min.js"></script>
+    <link rel="stylesheet" href="/static/element-plus@2.2.12/dist/index.css" />
+    <!-- <script src="/static/icons-vue@2.0.6/dist/index.js"></script> -->
+
+
+    <!-- <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
+    <script src="https://unpkg.com/vue@3"></script>
+    <script src="https://unpkg.com/element-plus"></script>
+    <script src="https://unpkg.com/@element-plus/icons-vue"></script> -->
+
+    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/element-plus/dist/index.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/vue@3"></script>
+    <script src="https://cdn.jsdelivr.net/npm/element-plus"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@element-plus/icons-vue"></script> -->
+
+    <style type="text/css">
+        html,
+        body,
+        iframe,
+        #showvue,
+        .el-main {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            border: 0;
+        }
+
+        .el-main {
+            height: calc(100% - 50px);
+        }
+
+        .el-collapse-item__header {
+            background-color: #c6e2ff;
+            font-size: larger;
+        }
+
+        .el-upload {
+            display: block;
+            width: 40%;
+            float: left;
+        }
+
+        .el-upload-list {
+            display: block;
+            width: 59%;
+            height: 200px;
+            float: right;
+            overflow: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="showvue">
+        <el-main>
+
+            <div style="margin: 20px 0">
+                <el-breadcrumb separator=">" style="display: inline-block;">
+                    <el-breadcrumb-item v-for="item of pathdata">
+                        <a v-if="item.path" @click="pathclick(item.path)">{{ item.title }}</a>
+                        <span v-else>{{ item.title }}</span>
+                    </el-breadcrumb-item>
+                </el-breadcrumb>
+
+            </div>
+
+            <el-divider content-position="center" style="margin: 10px 0;"></el-divider>
+
+            <el-table ref="tableRef" :data="tableData" highlight-current-row :key="tablekey"
+                style="height: calc(100% - 75px);" @selection-change="handleSelectionChange"
+                @current-change="handleCurrentChange" @cell-click="handlecellclick">
+
+                <el-table-column property="name" label="name" width="200" sortable></el-table-column>
+                <el-table-column property="isdir" label="isdir" width="120" sortable></el-table-column>
+                <el-table-column property="size" label="capacity" width="120" sortable></el-table-column>
+                <el-table-column property="modtime" label="modtime" width="120" sortable></el-table-column>
+
+                <el-table-column fixed="right" label="Operations" min-width="160" align="right">
+                    <template #header>
+                        <el-button size="small" type="primary" plain @click="getfolder()">
+                            <el-icon>
+                                <svg viewBox="0 0 1024 1024">
+                                    <path fill="currentColor"
+                                        d="M771.776 794.88A384 384 0 0 1 128 512h64a320 320 0 0 0 555.712 216.448H654.72a32 32 0 1 1 0-64h149.056a32 32 0 0 1 32 32v148.928a32 32 0 1 1-64 0v-50.56zM276.288 295.616h92.992a32 32 0 0 1 0 64H220.16a32 32 0 0 1-32-32V178.56a32 32 0 0 1 64 0v50.56A384 384 0 0 1 896.128 512h-64a320 320 0 0 0-555.776-216.384z">
+                                    </path>
+                                </svg>
+                            </el-icon>
+                        </el-button>
+                        <el-input v-model="tablesearch" size="small" style="max-width: 100px;" id="tablesearch"
+                            :value="tablesearchvalue" placeholder="Type to search" />
+                    </template>
+                    <template #default="scope">
+                        <el-button size="small" type="success" plain @click="handleDownload(scope.$index, scope.row)">下载
+                        </el-button>
+                        <el-popconfirm confirm-button-text="删除" cancel-button-text="取消" icon-color="#626AEF"
+                            title="再次确认删除?" @confirm="handleDelete(scope.$index, scope.row)">
+                            <template #reference>
+                                <el-button size="small" type="danger" plain>删除</el-button>
+                            </template>
+                        </el-popconfirm>
+                    </template>
+                </el-table-column>
+            </el-table>
+
+            <el-backtop :right="10" :bottom="80"></el-backtop>
+
+        </el-main>
+
+        <div style="width: 100%;position: fixed;bottom: 0px;z-index: 99;">
+            <el-collapse v-model="activeNames" @change="handleChange" v-model:file-list="fileList">
+                <el-collapse-item :title="collapsetitle" name="1">
+                    <div style="height: 200px;">
+
+                        <el-upload :action="uploadpath" drag multiple :auto-upload="true">
+                            <el-icon style="font-size: 110px;color: #a8abb2;">
+                                <svg viewBox="0 0 1024 1024">
+                                    <path fill="currentColor"
+                                        d="M544 864V672h128L512 480 352 672h128v192H320v-1.6c-5.376.32-10.496 1.6-16 1.6A240 240 0 0 1 64 
+                                    624c0-123.136 93.12-223.488 212.608-237.248A239.808 239.808 0 0 1 512 192a239.872 239.872 0 0 1 
+                                    235.456 194.752c119.488 13.76 212.48 114.112 212.48 237.248a240 240 0 0 1-240 240c-5.376 0-10.56-1.28-16-1.6v1.6H544z">
+                                    </path>
+                                </svg>
+                            </el-icon>
+                            <div class="el-upload__text">
+                                拖至此处 或 <em>点击选择</em>
+                            </div>
+                        </el-upload>
+
+                    </div>
+                </el-collapse-item>
+            </el-collapse>
+        </div>
+
+    </div>
+</body>
+
+<script type="text/javascript">
+    var host = location.origin; 
+    function GetQueryString(name) {
+        var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
+        var r = window.location.search.substr(1).match(reg);
+        if (r != null) return decodeURI(r[2]); return null;
+    }
+    var folderpath = GetQueryString("folder")
+    var vueapp = {
+        data() {
+            return {
+                tablekey: 0,
+                tablesearch: "",
+                tablesearchvalue: "",
+                tableData_: [],
+                tableData: [
+                    // {
+                    //     modtime: '2016-05-03',
+                    //     name: 'Tom',
+                    //     size: '89287928379',
+                    //     isdir: true
+                    // },
+                ],
+                affixoffset: 0,
+                activeNames: [],
+                uploadpath: host + "/filedata/upload" + "?folder=" + folderpath,
+                fileList: [],
+                collapsetitle: "上传 PATH:" + folderpath
+            }
+        },
+        methods: {
+            getfolder() {
+                axios.post(host + '/filedata/folder',
+                    { "user": "admin", "path": folderpath }
+                ).then(response => {
+                    if (response.data.code === "666") {
+                        var folder = JSON.parse(response.data.data);
+                        this.tableData_ = folder.folder
+                        this.tableData = folder.folder
+                        this.tablesearch = ""
+                    } else {
+                        // console.log("folder post fail");
+                    }
+                }).catch(error => {
+                    console.log("folder post error", error);
+                })
+            },
+            handlecellclick(row, column, cell, event) {
+                if (column.property === "name") {
+                    if (row.isdir) {
+                        self.location = host + location.pathname + "?folder=" + folderpath + "/" + row.name
+                    } else {
+                        window.open(host + folderpath + "/" + row.name, "target");
+                    }
+                }
+            },
+            handleChange(val) {
+                var obj = document.getElementsByClassName("el-main");
+                if (val[0]) {
+                    this.affixoffset = 200;
+                    obj[0].style.cssText = "height: calc(100% - 275px);transition: 0.6s;";
+                } else {
+                    this.affixoffset = 0;
+                    obj[0].style.cssText = "height: calc(100% - 50px);transition: 0.6s;";
+                }
+            },
+            handleDownload(index, row) {
+                if (row.isdir) {
+                    alert("文件夹无法下载")
+                    return
+                }
+                // 浏览器直接打开转下载的方法，目前只有 chrome和firfox支持 // ctrl+c ctrl+v
+                function downloadEvt(url, fileName) {
+                    const el = document.createElement('a');
+                    el.style.display = 'none';
+                    el.setAttribute('target', '_blank');
+                    /**
+                      * download的属性是HTML5新增的属性
+                      * href属性的地址必须是非跨域的地址，如果引用的是第三方的网站或者说是前后端分离的项目(调用后台的接口)，这时download就会不起作用。
+                      * 此时，如果是下载浏览器无法解析的文件，例如.exe,.xlsx..那么浏览器会自动下载，但是如果使用浏览器可以解析的文件，比如.txt,.png,.pdf....浏览器就会采取预览模式
+                      * 所以，对于.txt,.png,.pdf等的预览功能我们就可以直接不设置download属性(前提是后端响应头的Content-Type: application/octet-stream，如果为application/pdf浏览器则会判断文件为 pdf ，自动执行预览的策略)
+                      */
+                    fileName && el.setAttribute('download', fileName);
+                    el.href = url;
+                    document.body.appendChild(el);
+                    el.click();
+                    document.body.removeChild(el);
+                }
+                var downloadpath = host + folderpath + "/" + row.name
+                downloadEvt(downloadpath, row.name)
+            },
+            handleDelete(index, row) {
+                var deletepath = folderpath + "/" + row.name
+                // 弹窗确认
+                axios.post(host + '/filedata/delete',
+                    { "user": "admin", "path": deletepath }
+                ).then(response => {
+                    if (response.data.code === "666") {
+                        this.getfolder()
+                    } else {
+                        alert("delete " + row.name + " fail")
+                    }
+                }).catch(error => {
+                    console.log("delete post error", error);
+                })
+            },
+        },
+        watch: {
+            tablesearch: function (el) {
+                this.tableData = this.tableData_.filter(
+                    (data) =>
+                        !this.tablesearch ||
+                        data.name.toLowerCase().includes(this.tablesearch.toLowerCase())
+                )
+            },
+        },
+        setup() {
+            // table
+            var tabSelection = Vue.ref([]);
+            const tableRef = Vue.ref(null);
+            const instance = Vue.getCurrentInstance();
+            var toggleSelection = (rows) => {
+                var tabInstance = Vue.toRefs(instance.refs.tableRef);
+                if (rows) {
+                    rows.forEach(row => {
+                        tabInstance.toggleRowSelection.value(row, undefined)
+                    })
+                } else {
+                    tabInstance.clearSelection.value()
+                }
+            };
+            var handleSelectionChange = (val) => {
+                tabSelection = val
+            };
+            const currentRow = Vue.ref()
+            var handleCurrentChange = (val) => {
+                currentRow.value = val
+            }
+
+
+            // filepath
+            var pathdata = (() => {
+                var paths = folderpath.split("/");
+                var pathdata = [];
+                var p_ = { title: "", path: "" };
+                for (var i = 1; i < paths.length; i++) {
+                    var p = { title: paths[i], path: p_.path + "/" + paths[i] };
+                    p_ = p
+                    pathdata.push(p)
+                }
+                last = pathdata[pathdata.length - 1]
+                pathdata = pathdata.slice(0, -1)
+                pathdata.push({ title: last.title })
+                return pathdata
+            })()
+            var pathclick = (path) => {
+                self.location = host + location.pathname + "?folder=" + path
+            }
+
+            return {
+                tabSelection,
+                handleSelectionChange,
+                toggleSelection,
+                handleCurrentChange,
+
+                pathdata,
+                pathclick,
+            }
+        }
+    };
+    const vueappvm = Vue.createApp(vueapp).use(ElementPlus).mount('#showvue');
+    vueappvm.getfolder()
+
+
+</script>
+
+</html>
